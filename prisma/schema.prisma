@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  TEACHER
+  ADMIN
+}
+
+enum PaymentType {
+  ABONEMENT // оплата за абонемент
+  SINGLE_LESSON // разовая оплата за занятие
+}
+
+enum PaymentStatus {
+  PENDING // ожидает подтверждения
+  PAID // успешно оплачено
+  CANCELLED // отменено
+  REFUNDED // возврат
+}
+
+enum PaymentMethod {
+  CASH // наличные
+  CARD // карта
+  TRANSFER // перевод
+  ONLINE // онлайн-платёж
+}
+
+enum TeacherTransactionType {
+  LESSON_INCOME // доход за проведённый урок
+  BONUS // премия
+  DEDUCTION // удержание
+  WITHDRAWAL // выплата преподавателю
+}
+
+enum LessonType {
+  ABONEMENT
+  TRIAL
+  ONETIME
+}
+
+enum AbonementStatus {
+  UNPAIND
+  ACTIVE
+  CLOSED
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  telegramId String   @unique
+  username   String?
+  role       Role     @default(GUEST)
+  teacher    Teacher? @relation(fields: [teacherId], references: [id])
+  teacherId  Int?     @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model TeacherTransaction {
+  id          Int                    @id @default(autoincrement())
+  teacher     Teacher                @relation(fields: [teacherId], references: [id])
+  teacherId   Int
+  type        TeacherTransactionType
+  amount      Float
+  description String?
+  date        DateTime               @default(now())
+
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id])
+  scheduleId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Teacher {
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  phone               String                @unique
+  baseRate            Float?
+  groupCoef           Float?
+  students            Student[]             @relation("TeacherStudents")
+  subjects            Subject[]             @relation("TeacherSubjects")
+  schedules           Schedule[]
+  user                User?                 @relation
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  Abonement           Abonement[]
+  TeacherAvailability TeacherAvailability[]
+  transactions        TeacherTransaction[]
+  balance             Float                 @default(0)
+}
+
+model TeacherAvailability {
+  id        Int      @id @default(autoincrement())
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  teacherId Int
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id         Int         @id @default(autoincrement())
+  firstName  String
+  lastName   String?
+  age        Int?
+  phone      String      @unique
+  source     String?
+  note       String?
+  teachers   Teacher[]   @relation("TeacherStudents")
+  schedules  Schedule[]  @relation("ScheduleStudents")
+  abonements Abonement[]
+  visits     Visit[]
+  payments   Payment[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Subject {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique
+  duration          Int                 @default(60)
+  teachers          Teacher[]           @relation("TeacherSubjects")
+  schedules         Schedule[]
+  abonements        Abonement[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  AbonementTemplate AbonementTemplate[]
+}
+
+model Schedule {
+  id                 Int                  @id @default(autoincrement())
+  startDate          DateTime
+  endDate            DateTime
+  type               LessonType           @default(ONETIME)
+  teacher            Teacher              @relation(fields: [teacherId], references: [id])
+  teacherId          Int
+  subject            Subject              @relation(fields: [subjectId], references: [id])
+  subjectId          Int
+  students           Student[]            @relation("ScheduleStudents")
+  visits             Visit[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  TeacherTransaction TeacherTransaction[]
+
+  abonement   Abonement? @relation(fields: [abonementId], references: [id])
+  abonementId Int?
+}
+
+model Payment {
+  id      Int           @id @default(autoincrement())
+  date    DateTime      @default(now())
+  status  PaymentStatus @default(PAID)
+  type    PaymentType
+  method  PaymentMethod
+  amount  Float
+  comment String?
+
+  student   Student @relation(fields: [studentId], references: [id])
+  studentId Int
+
+  abonement   Abonement? @relation(fields: [abonementId], references: [id])
+  abonementId Int?
+
+  visit   Visit? @relation("PaymentVisit", fields: [visitId], references: [id])
+  visitId Int?   @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AbonementTemplate {
+  id         Int         @id @default(autoincrement())
+  name       String
+  lessons    Int
+  duration   Int
+  price      Float
+  subject    Subject     @relation(fields: [subjectId], references: [id])
+  subjectId  Int
+  abonements Abonement[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Abonement {
+  id         Int               @id @default(autoincrement())
+  status     AbonementStatus   @default(UNPAIND)
+  template   AbonementTemplate @relation(fields: [templateId], references: [id])
+  templateId Int
+  student    Student           @relation(fields: [studentId], references: [id])
+  studentId  Int
+  teacher    Teacher           @relation(fields: [teacherId], references: [id])
+  teacherId  Int
+  startDate  DateTime
+  endDate    DateTime
+  visits     Visit[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  Subject    Subject?          @relation(fields: [subjectId], references: [id])
+  subjectId  Int?
+  Payment    Payment[]
+  Schedule   Schedule[]
+}
+
+model Visit {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id])
+  studentId Int
+
+  schedule   Schedule @relation(fields: [scheduleId], references: [id])
+  scheduleId Int
+
+  abonement   Abonement? @relation(fields: [abonementId], references: [id])
+  abonementId Int?
+
+  // 👇 обратная связь на Payment
+  payment Payment? @relation("PaymentVisit")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
