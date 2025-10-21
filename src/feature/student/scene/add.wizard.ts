@@ -1,6 +1,6 @@
-import { Scenes, Markup } from 'telegraf';
+import { Scenes } from 'telegraf';
 import { studentService } from '../student.service';
-import { clearLastKeyboard, replyMessage, replyWithKeyboard } from '../../../utils/keyboard';
+import { clearLastKeyboard, replyMessage } from '../../../utils/keyboard';
 import { showStudentDetailsAction } from '../actions/details.action';
 
 interface AddStudentState {

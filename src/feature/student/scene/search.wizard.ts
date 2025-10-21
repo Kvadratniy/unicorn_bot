@@ -1,7 +1,7 @@
 import { Scenes, Markup } from 'telegraf';
 import { Message } from 'telegraf/typings/core/types/typegram';
 import { studentService } from '../student.service';
-import { clearLastKeyboard, replyWithKeyboard } from '../../../utils/keyboard';
+import {clearLastKeyboard, replyMessage, replyWithKeyboard} from '../../../utils/keyboard';
 
 /**
  * 🔍 Сцена поиска ученика по телефону
@@ -12,7 +12,7 @@ export const searchStudentScene = new Scenes.WizardScene<UnicornWizardContext>(
     // 1️⃣ Запрашиваем телефон
     async (ctx) => {
         await clearLastKeyboard(ctx);
-        await ctx.reply('📞 Введите номер телефона (или часть):');
+        await replyMessage(ctx, '📞 Введите номер телефона (или часть):');
         return ctx.wizard.next();
     },
 
@@ -29,7 +29,7 @@ export const searchStudentScene = new Scenes.WizardScene<UnicornWizardContext>(
         // 🧾 Если ничего не найдено
         if (!students.length) {
             const keyboard = Markup.inlineKeyboard([
-                [Markup.button.callback('⬅ Отмена', 'cancel_student_search')],
+                [Markup.button.callback('⬅ Назад', 'menu_students')],
             ]);
 
             await replyWithKeyboard(
@@ -38,7 +38,8 @@ export const searchStudentScene = new Scenes.WizardScene<UnicornWizardContext>(
                 keyboard,
                 { parse_mode: 'Markdown' },
             );
-            return;
+
+            return ctx.scene.leave();
         }
 
         // ✅ Формируем список результатов
@@ -75,14 +76,3 @@ export const searchStudentScene = new Scenes.WizardScene<UnicornWizardContext>(
         return ctx.scene.leave();
     },
 );
-
-/**
- * 🔹 Хэндлер отмены поиска
- */
-export function registerSearchStudentCancelHandler(bot: any) {
-    bot.action('cancel_student_search', async (ctx: any) => {
-        await ctx.answerCbQuery().catch(() => {});
-        await ctx.scene.leave();
-        await ctx.scene.enter('students-menu'); // или вызов showStudentsListAction(ctx)
-    });
-}

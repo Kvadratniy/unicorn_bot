@@ -1,6 +1,6 @@
 import { Markup } from 'telegraf';
 import { clearLastKeyboard, replyMessage, replyWithKeyboard } from '../../utils/keyboard';
-import { deleteMessageSafe, getCallbackData, subtractBusyIntervals } from '../../utils/helpers';
+import {deleteMessageSafe, getCallbackData, removeInlineKeyboard, subtractBusyIntervals} from '../../utils/helpers';
 import { scheduleService } from '../../feature/schedule/schedule.service';
 
 export async function selectTrialTeacherStep(
@@ -28,7 +28,7 @@ export async function selectTrialTeacherStep(
 
     if (match) {
         const teacherId = Number(match[1]);
-        await deleteMessageSafe(ctx);
+        await removeInlineKeyboard(ctx);
         state.teacherId = teacherId;
         await clearLastKeyboard(ctx);
 
