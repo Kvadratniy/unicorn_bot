@@ -10,13 +10,13 @@ echo "Генерируем Prisma Client..."
 npx prisma generate
 #
 ## echo "Сбрасываем базу..."
-#npx prisma migrate reset --force
+npx prisma migrate reset --force
 #
 ## echo "Применяем миграции..."
-#npx prisma migrate dev --name init
+npx prisma migrate dev --name init
 #
 ## echo "Заполняем seed..."
-#npx ts-node prisma/seed.ts
+npx ts-node prisma/seed.ts
 
 echo "Запускаем бота..."
 node dist/bot.js

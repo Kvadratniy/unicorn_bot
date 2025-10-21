@@ -1,16 +1,19 @@
 import prisma from '../../core/prisma';
-import { toMSKfromUTC } from '../../utils/time';
+import { toMSKfromUTC, toUTCfromMSK } from '../../utils/time';
 
 export const teacherService = {
-    /**
-     * Добавить новое доступное время преподавателя
-     */
+    /* -------------------------------------------------------------------------- */
+    /* 🗓 Доступность преподавателя                                                */
+    /* -------------------------------------------------------------------------- */
+
+    /** Добавить новое доступное время преподавателя */
     async createAvailability(teacherId: number, startDate: Date, endDate: Date) {
         return prisma.teacherAvailability.create({
             data: { teacherId, startDate, endDate },
         });
     },
 
+    /** Получить интервалы доступности за день (время в МСК) */
     async getTeacherAvailabilityForDay(teacherId: number, dateIso: string) {
         const startUtc = new Date(`${dateIso}T00:00:00Z`);
         const endUtc = new Date(`${dateIso}T23:59:59Z`);
@@ -20,7 +23,6 @@ export const teacherService = {
             orderBy: { startDate: 'asc' },
         });
 
-        // Преобразуем интервалы в читаемые строки
         return intervals.map((i) => {
             const startMsk = toMSKfromUTC(i.startDate);
             const endMsk = toMSKfromUTC(i.endDate);
@@ -36,9 +38,7 @@ export const teacherService = {
         });
     },
 
-    /**
-     * Получить все доступные интервалы для преподавателя за конкретный день
-     */
+    /** Получить все интервалы за конкретный день (в UTC) */
     async getAvailabilityForDay(teacherId: number, dayStart: Date, dayEnd: Date) {
         return prisma.teacherAvailability.findMany({
             where: {
@@ -50,17 +50,15 @@ export const teacherService = {
         });
     },
 
-    /**
-     * Удалить конкретный интервал доступности (по id)
-     */
+    /** Удалить конкретный интервал доступности */
     async deleteAvailability(id: number, teacherId: number) {
         return prisma.teacherAvailability.deleteMany({
             where: { id, teacherId },
         });
     },
 
+    /** Получить свободные дни по предмету (у преподавателей этого предмета) */
     async getFreeDaysBySubject(subjectId: number): Promise<string[]> {
-        // 1️⃣ Преподаватели, ведущие предмет
         const teachers = await prisma.teacher.findMany({
             where: { subjects: { some: { id: subjectId } } },
             select: {
@@ -83,9 +81,7 @@ export const teacherService = {
 
             for (const avail of teacher.TeacherAvailability) {
                 let day = new Date(avail.startDate);
-
                 while (day <= avail.endDate) {
-                    // Пропускаем прошлое
                     if (day < today) {
                         day.setDate(day.getDate() + 1);
                         continue;
@@ -106,7 +102,7 @@ export const teacherService = {
 
                     for (const b of busy) {
                         freeRanges = freeRanges.flatMap((range) => {
-                            if (b.end <= range.start || b.start >= range.end) return [range]; // не пересекаются
+                            if (b.end <= range.start || b.start >= range.end) return [range];
                             const newRanges = [];
                             if (b.start > range.start)
                                 newRanges.push({ start: range.start, end: b.start });
@@ -115,9 +111,9 @@ export const teacherService = {
                         });
                     }
 
-                    // хотя бы 5 минут свободного времени
-                    const hasFree = freeRanges.some((r) => r.end - r.start > 5 * 60 * 1000);
-                    if (hasFree) freeDays.add(startOfDay.toISOString().split('T')[0]);
+                    if (freeRanges.some((r) => r.end - r.start > 5 * 60 * 1000)) {
+                        freeDays.add(startOfDay.toISOString().split('T')[0]);
+                    }
 
                     day.setDate(day.getDate() + 1);
                 }
@@ -125,5 +121,100 @@ export const teacherService = {
         }
 
         return Array.from(freeDays).sort();
+    },
+
+    /* -------------------------------------------------------------------------- */
+    /* 👨‍🏫 Информация о преподавателях                                            */
+    /* -------------------------------------------------------------------------- */
+
+    /** Получить преподавателя по ID */
+    async getTeacherById(id: number) {
+        return prisma.teacher.findUnique({
+            where: { id },
+            include: {
+                subjects: { select: { id: true, name: true } },
+                TeacherAvailability: true,
+            },
+        });
+    },
+
+    /** Получить всех преподавателей */
+    async getAllTeachers() {
+        return prisma.teacher.findMany({
+            orderBy: { name: 'asc' },
+            include: { subjects: true },
+        });
+    },
+
+    /** Получить преподавателей по предмету */
+    async getTeachersBySubject(subjectId: number) {
+        return prisma.teacher.findMany({
+            where: { subjects: { some: { id: subjectId } } },
+            orderBy: { name: 'asc' },
+            include: { subjects: true },
+        });
+    },
+
+    /* -------------------------------------------------------------------------- */
+    /* 💰 Баланс и транзакции преподавателей                                       */
+    /* -------------------------------------------------------------------------- */
+
+    /** Получить текущий баланс преподавателя */
+    async getBalance(teacherId: number) {
+        const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } });
+        return teacher?.balance ?? 0;
+    },
+
+    /** Пополнить баланс преподавателя (например, при оплате урока) */
+    async increaseBalance(teacherId: number, amount: number, description = 'Начисление') {
+        await prisma.teacher.update({
+            where: { id: teacherId },
+            data: { balance: { increment: amount } },
+        });
+
+        await prisma.teacherTransaction.create({
+            data: {
+                teacherId,
+                type: 'LESSON_INCOME',
+                amount,
+                description,
+            },
+        });
+    },
+
+    /** Сделать выплату преподавателю (WITHDRAWAL) */
+    async withdraw(teacherId: number, amount: number, description = 'Выплата преподавателю') {
+        const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } });
+        if (!teacher) throw new Error('Преподаватель не найден');
+
+        if (teacher.balance < amount) {
+            throw new Error('Недостаточно средств на балансе');
+        }
+
+        await prisma.$transaction([
+            prisma.teacher.update({
+                where: { id: teacherId },
+                data: { balance: { decrement: amount } },
+            }),
+            prisma.teacherTransaction.create({
+                data: {
+                    teacherId,
+                    type: 'WITHDRAWAL',
+                    amount: -amount,
+                    description,
+                },
+            }),
+        ]);
+
+        return await prisma.teacher.findUnique({ where: { id: teacherId } });
+    },
+
+    /** Получить историю транзакций преподавателя */
+    async getTransactions(teacherId: number, limit = 20) {
+        return prisma.teacherTransaction.findMany({
+            where: { teacherId },
+            orderBy: { date: 'desc' },
+            take: limit,
+        });
     },
 };

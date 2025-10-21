@@ -211,20 +211,31 @@ export const studentService = {
     /**
      * Получить всех учеников преподавателя (с фильтром по его абонементам).
      */
-    async getStudentsForTeacher(teacherId: number) {
-        const students = await prisma.student.findMany({
+    async getAllStudentsForTeacher(teacherId: number) {
+        const teacher = await prisma.teacher.findUnique({
+            where: { id: teacherId },
             include: {
-                abonements: {
-                    where: { teacherId },
+                students: {
+                    orderBy: { firstName: 'asc' },
                     include: {
-                        template: { select: { name: true, lessons: true } },
-                        visits: true,
+                        abonements: {
+                            where: { teacherId, status: { not: 'CLOSED' }, },
+                            include: {
+                                template: { select: { name: true, lessons: true } },
+                                Schedule: true,
+                            },
+                        },
+                        schedules: {
+                            select: {
+                                id: true,
+                                abonementId: true,
+                            },
+                        },
                     },
                 },
             },
-            orderBy: { firstName: 'asc' },
         });
 
-        return students.filter((s) => s.abonements.length > 0);
-    },
+        return teacher?.students ?? [];
+    }
 };

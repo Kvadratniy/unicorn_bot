@@ -15,7 +15,7 @@ export async function showStudentsListAction(ctx: any, page = 1) {
         let totalPages = 1;
 
         if (isTeacher) {
-            students = await studentService.getStudentsForTeacher(user.teacher.id);
+            students = await studentService.getAllStudentsForTeacher(user.teacher.id);
             totalPages = Math.max(1, Math.ceil(students.length / 5));
             const start = (page - 1) * 5;
             students = students.slice(start, start + 5);
@@ -54,13 +54,14 @@ export async function showStudentsListAction(ctx: any, page = 1) {
 
                 const abonements = s.abonements.length
                     ? s.abonements
-                          .map((a: any) => {
-                              const total = a.template?.lessons ?? 0;
-                              const used = a.visits?.length ?? 0;
-                              const name = a.template?.name ?? 'Без названия';
-                              return `${name} (${used}/${total})`;
-                          })
-                          .join(', ')
+                        .map((a: any) => {
+                            const total = a.template?.lessons ?? 0;
+                            // считаем количество занятий по расписанию, связанных с этим абонементом
+                            const used = s.schedules.filter((sch: any) => sch.abonementId === a.id).length;
+                            const name = a.template?.name ?? 'Без названия';
+                            return `${name} (${used}/${total})`; // осталось / всего
+                        })
+                        .join(', ')
                     : 'нет';
 
                 return `👤 *${fullName}*\n🎫 ${abonements}\nПодробнее: /student${s.id}\n`;

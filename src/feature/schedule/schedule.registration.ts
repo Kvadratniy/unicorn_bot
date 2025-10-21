@@ -39,7 +39,7 @@ export function registerScheduleHandlers(bot: Telegraf<UnicornWizardContext>) {
         const match = data?.match(/add_trial_student_lesson_(\d+)/);
         if (!match) return;
         const studentId = Number(match[1]);
-        await ctx.scene.enter('add-full-schedule-wizard', { studentId, type: 'TRIAL' });
+        await ctx.scene.enter('add-trial-schedule-wizard', { studentId, type: 'TRIAL' });
     });
 
     // По абонементу
@@ -53,7 +53,7 @@ export function registerScheduleHandlers(bot: Telegraf<UnicornWizardContext>) {
         console.log('teacher: ', teacher);
         if (!teacher) return;
 
-        await ctx.scene.enter('add-teacher-schedule-wizard', {
+        await ctx.scene.enter('add-abonement-schedule-wizard', {
             studentId: Number(match[1]),
             type: 'ABONEMENT',
             teacher: teacher,
@@ -72,12 +72,12 @@ export function registerScheduleHandlers(bot: Telegraf<UnicornWizardContext>) {
         console.log('teacher: ', teacher);
         if (!teacher) return;
 
-        await ctx.scene.enter('add-teacher-schedule-wizard', {
+        await ctx.scene.enter('add-onetime-schedule-wizard', {
             studentId: Number(match[1]),
             type: 'ONETIME',
             teacherId: teacher.id,
             teacher: teacher,
-            subjectId: teacher.subjects[0],
+            subjectId: teacher.subjects[0].id, // FIXME
         });
     });
 

@@ -22,12 +22,23 @@ export async function showStudentDetailsAction(ctx: any, idParam?: number) {
 
         // 2️⃣ Обрабатываем абонементы
         const abonements = studentService.filterAbonementsForTeacher(student.abonements, teacherId);
-        const activeAbonement = studentService.findActiveAbonement(abonements);
-        const abonementsText = studentService.formatAbonements(student, abonements, !!isTeacher);
+        // ⚙️ Показываем только абонементы, где осталось занятий > 0
+        const abonementsWithLessonsLeft = abonements
+            .filter((a) => a.status !== 'CLOSED') // 👈 исключаем закрытые
+            .filter((a) => {
+                const totalLessons = a.template?.lessons ?? 0;
+                const usedLessons = student.schedules.filter((s: any) => s.abonementId === a.id).length;
+                return totalLessons - usedLessons > 0;
+            });
+
+        console.log('abonementsWithLessonsLeft:', abonementsWithLessonsLeft);
+
+        const activeAbonement = studentService.findActiveAbonement(abonementsWithLessonsLeft);
+        const abonementsText = studentService.formatAbonements(student, abonementsWithLessonsLeft, !!isTeacher);
 
         // 3️⃣ Формируем общую информацию
         const teacherNames =
-            [...new Set(abonements.map((a) => a.teacher?.name).filter(Boolean))].join(', ') || '—';
+            [...new Set(abonementsWithLessonsLeft.map((a) => a.teacher?.name).filter(Boolean))].join(', ') || '—';
         const fullName = `${student.firstName} ${student.lastName ?? ''}`.trim();
 
         const text =

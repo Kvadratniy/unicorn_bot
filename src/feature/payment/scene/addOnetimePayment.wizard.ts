@@ -5,7 +5,7 @@ import { PaymentMethod } from '@prisma/client';
 import { paymentService } from '../payment.service';
 
 interface PaymentState {
-    abonementId?: number;
+    paymentId?: number;
     amount?: number;
     method?: PaymentMethod;
     comment?: string;
@@ -15,38 +15,45 @@ type PaymentContext = Scenes.WizardContext & {
     wizard: Scenes.WizardContextWizard<PaymentContext> & { state: PaymentState };
 };
 
-export const addPaymentScene = new Scenes.WizardScene<PaymentContext>(
-    'add-payment-wizard',
+export const addOnetimePaymentWizard = new Scenes.WizardScene<PaymentContext>(
+    'add-onetime-payment-wizard',
 
     /* -------------------------------------------------------------------------- */
-    /* 1️⃣ Получаем ID абонемента                                                 */
+    /* 1️⃣ Получаем ID платежа                                                   */
     /* -------------------------------------------------------------------------- */
     async (ctx) => {
         const state = ctx.scene.state as PaymentState;
 
-        const abonementId =
-            state?.abonementId ||
+        // Получаем ID из state или callback
+        const paymentId =
+            state?.paymentId ||
             (() => {
                 const data = getCallbackData(ctx);
-                const match = data?.match(/payment_(\d+)/);
+                const match = data?.match(/payment_onetime(\d+)/);
                 return match ? parseInt(match[1], 10) : NaN;
             })();
 
-        if (isNaN(abonementId)) {
-            await replyMessage(ctx, '⚠️ Не удалось определить абонемент.');
+        if (isNaN(paymentId)) {
+            await replyMessage(ctx, '⚠️ Не удалось определить оплату.');
             return ctx.scene.leave();
         }
 
-        const abonement = await paymentService.getAbonementById(abonementId);
-        if (!abonement) {
-            await replyMessage(ctx, '❌ Абонемент не найден.');
+        const payment = await paymentService.getPaymentById(paymentId);
+        if (!payment) {
+            await replyMessage(ctx, '❌ Платёж не найден.');
             return ctx.scene.leave();
         }
 
-        ctx.wizard.state.abonementId = abonementId;
+        if (payment.status === 'PAID') {
+            await replyMessage(ctx, '✅ Этот платёж уже подтверждён.');
+            return ctx.scene.leave();
+        }
+
+        ctx.wizard.state.paymentId = paymentId;
+
         await replyMessage(
             ctx,
-            `💰 Введите сумму оплаты для ученика *${abonement.student.firstName}*`,
+            `💰 Введите сумму оплаты для ученика *${payment.student.firstName}*`,
             { parse_mode: 'Markdown' },
         );
 
@@ -90,7 +97,7 @@ export const addPaymentScene = new Scenes.WizardScene<PaymentContext>(
         await deleteMessageSafe(ctx);
 
         if (data === 'payment_cancel') {
-            await replyMessage(ctx, '❌ Добавление оплаты отменено.');
+            await replyMessage(ctx, '❌ Редактирование оплаты отменено.');
             return ctx.scene.leave();
         }
 
@@ -106,7 +113,7 @@ export const addPaymentScene = new Scenes.WizardScene<PaymentContext>(
     },
 
     /* -------------------------------------------------------------------------- */
-    /* 4️⃣ Ввод комментария и создание оплаты                                     */
+    /* 4️⃣ Ввод комментария и обновление оплаты                                   */
     /* -------------------------------------------------------------------------- */
     async (ctx) => {
         const comment = getMessageText(ctx) || '';
@@ -116,36 +123,33 @@ export const addPaymentScene = new Scenes.WizardScene<PaymentContext>(
         }
 
         ctx.wizard.state.comment = comment === '-' ? undefined : comment;
-        const { abonementId, amount, method } = ctx.wizard.state;
+        const { paymentId, amount, method } = ctx.wizard.state;
 
-        if (!abonementId || !amount || !method) {
-            await replyMessage(ctx, '⚠️ Недостаточно данных для создания оплаты.');
+        if (!paymentId || !amount || !method) {
+            await replyMessage(ctx, '⚠️ Недостаточно данных для обновления оплаты.');
             return ctx.scene.leave();
         }
 
-        const abonement = await paymentService.getAbonementById(abonementId);
-        if (!abonement) {
-            await replyMessage(ctx, '❌ Абонемент не найден.');
+        const payment = await paymentService.getPaymentById(paymentId);
+        if (!payment) {
+            await replyMessage(ctx, '❌ Платёж не найден.');
             return ctx.scene.leave();
         }
 
-        await paymentService.createPayment({
-            studentId: abonement.studentId,
-            abonementId,
+        await paymentService.updatePayment(paymentId, {
             amount,
             method,
             comment: ctx.wizard.state.comment,
+            status: 'PAID',
         });
-
-        await paymentService.activateAbonementIfUnpaid(abonementId);
 
         await replyMessage(
             ctx,
-            `✅ Оплата успешно добавлена!\n\n` +
-                `💰 *${amount} ₽*\n` +
-                `💳 ${method}\n` +
-                (comment && comment !== '-' ? `📝 ${comment}\n` : '') +
-                `📅 ${new Date().toLocaleDateString('ru-RU')}`,
+            `✅ Оплата успешно подтверждена!\n\n` +
+            `💰 *${amount} ₽*\n` +
+            `💳 ${method}\n` +
+            (comment && comment !== '-' ? `📝 ${comment}\n` : '') +
+            `📅 ${new Date().toLocaleDateString('ru-RU')}`,
             { parse_mode: 'Markdown' },
         );
 

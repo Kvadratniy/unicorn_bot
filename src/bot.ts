@@ -11,7 +11,6 @@ import { registerScheduleHandlers } from './feature/schedule/schedule.registrati
 import { studentRegistration } from './feature/student/student.registration';
 import { subjectRegistration } from './feature/subjects/subject.registration';
 import { abonementRegistration } from './feature/abonement/abonement.registration';
-import { addFullSchedule } from './feature/schedule/scene/addSchedule.wizard';
 import { removeInlineKeyboard } from './utils/helpers';
 import { initCreateVisitsJob } from './jobs/autoVisit.job';
 import { addAbonementScene } from './feature/abonement/scene/add.wizard';
@@ -19,9 +18,13 @@ import { userContextMiddleware } from './middleware/userContextMiddleware';
 import { addAvailabilityScene } from './feature/teacher/scene/addAvailability.wizard';
 import { registerTeacherHandlers } from './feature/teacher/teacher.registration';
 import { registerVisitsHandlers } from './feature/visits/visits.registrate';
-import { addPaymentScene } from './feature/payment/scene/addPayment.wizard';
 import { registerPaymentsHandlers } from './feature/payment/payment.registration';
-import { addTeacherSchedule } from './feature/schedule/scene/addTeacherSchedule.wizard';
+import {withdrawTeacherWizard} from "./feature/teacher/scene/withdraw.wizard";
+import {addOnetimeSchedule} from "./feature/schedule/scene/addOnetimeSchedule.wizard";
+import {addTrialSchedule} from "./feature/schedule/scene/addTrialSchedule.wizard";
+import {addAbonementSchedule} from "./feature/schedule/scene/addAbonementSchedule.wizard";
+import {addAbonementPayment} from "./feature/payment/scene/addAbonementPayment.wizard";
+import {addOnetimePaymentWizard} from "./feature/payment/scene/addOnetimePayment.wizard";
 
 const bot = new Telegraf<UnicornWizardContext>(process.env.BOT_TOKEN!);
 
@@ -31,11 +34,14 @@ const stage = new Scenes.Stage([
     addStudentScene,
     searchStudentScene,
     addAbonementScene,
-    addPaymentScene,
+    addAbonementPayment,
 
-    addFullSchedule,
-    addTeacherSchedule,
+    addTrialSchedule,
+    addAbonementSchedule,
     addAvailabilityScene,
+    addOnetimeSchedule,
+    addOnetimePaymentWizard,
+    withdrawTeacherWizard,
 ]);
 
 // === MIDDLEWARE ===

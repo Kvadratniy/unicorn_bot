@@ -43,4 +43,44 @@ export const paymentService = {
             });
         }
     },
+
+    async getPendingPayments() {
+        return prisma.payment.findMany({
+            where: { status: 'PENDING' },
+            orderBy: { date: 'desc' },
+            include: {
+                student: { select: { firstName: true, lastName: true } },
+                visit: {
+                    include: {
+                        schedule: {
+                            include: {
+                                teacher: { select: { name: true } },
+                                subject: { select: { name: true } },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    },
+
+    async getPaymentById(id: number) {
+        return prisma.payment.findUnique({
+            where: { id },
+            include: {
+                student: { select: { firstName: true, lastName: true } },
+                visit: {
+                    include: {
+                        schedule: {
+                            include: { teacher: true, subject: true },
+                        },
+                    },
+                },
+            },
+        });
+    },
+
+    async updatePayment(id: number, data: any) {
+        return prisma.payment.update({ where: { id }, data });
+    }
 };

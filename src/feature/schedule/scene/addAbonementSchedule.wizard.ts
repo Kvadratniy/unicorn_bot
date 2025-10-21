@@ -1,14 +1,13 @@
 import { Scenes } from 'telegraf';
-import { selectSubjectStep } from '../../../core/scene-steps/selectSubjectStep';
 import { saveScheduleStep } from './steps/saveSchedule';
-import { selectTrialDateStep } from '../../../core/scene-steps/selectTrialDate';
-import { selectTrialTeacherStep } from '../../../core/scene-steps/selectTrialTeacher';
+import { selectDateStep } from '../../../core/scene-steps/selectDateStep';
 import { selectTimeStep } from '../../../core/scene-steps/selectTimeStep';
+import { selectAbonementStep } from '../../../core/scene-steps/selectAbonementStep';
 
-export const addFullSchedule = new Scenes.WizardScene<any>(
-    'add-full-schedule-wizard',
+export const addAbonementSchedule = new Scenes.WizardScene<any>(
+    'add-abonement-schedule-wizard',
     async (ctx) => {
-        const result = await selectSubjectStep(ctx, ctx.wizard.state);
+        const result = await selectAbonementStep(ctx, ctx.wizard.state);
         if (result === 'next') {
             ctx.wizard.next();
             return ctx.wizard.steps[ctx.wizard.cursor](ctx);
@@ -16,15 +15,7 @@ export const addFullSchedule = new Scenes.WizardScene<any>(
         if (result === 'leave') return ctx.scene.leave();
     },
     async (ctx) => {
-        const result = await selectTrialDateStep(ctx, ctx.wizard.state);
-        if (result === 'next') {
-            ctx.wizard.next();
-            return ctx.wizard.steps[ctx.wizard.cursor](ctx);
-        }
-        if (result === 'leave') return ctx.scene.leave();
-    },
-    async (ctx) => {
-        const result = await selectTrialTeacherStep(ctx, ctx.wizard.state);
+        const result = await selectDateStep(ctx, ctx.wizard.state);
         if (result === 'next') {
             ctx.wizard.next();
             return ctx.wizard.steps[ctx.wizard.cursor](ctx);

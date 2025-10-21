@@ -129,6 +129,9 @@ async function handleAbonementLesson(
             startDate: { lte: now },
             endDate: { gte: now },
         },
+        include: {
+            template: true, // нужно, чтобы знать количество lessons
+        },
     });
 
     if (!abonement) {
@@ -148,6 +151,36 @@ async function handleAbonementLesson(
     await createTeacherTransaction(schedule);
 
     await notifyAdmins(bot, admins, schedule, student, 'Создан визит (по абонементу)');
+
+    // --- ✅ новая логика: проверка количества визитов ---
+    const visitCount = await prisma.visit.count({
+        where: { abonementId: abonement.id },
+    });
+
+    const totalLessons = abonement.template.lessons;
+
+    if (visitCount >= totalLessons) {
+        await prisma.abonement.update({
+            where: { id: abonement.id },
+            data: { status: 'CLOSED' },
+        });
+
+        console.log(
+            `📕 Абонемент #${abonement.id} (${student.firstName}) закрыт — ${visitCount}/${totalLessons} занятий`,
+        );
+
+        // можно уведомить админов
+        for (const admin of admins) {
+            if (!admin.telegramId) continue;
+            await bot.telegram
+                .sendMessage(
+                    admin.telegramId,
+                    `📕 Абонемент ${abonement.template.name} для ${student.firstName} закрыт (${visitCount}/${totalLessons})`,
+                    { parse_mode: 'Markdown' },
+                )
+                .catch(() => {});
+        }
+    }
 }
 
 /**
@@ -176,7 +209,7 @@ async function handleOnetimeLesson(
             type: PaymentType.SINGLE_LESSON,
             status: PaymentStatus.PENDING,
             method: PaymentMethod.CASH,
-            amount: 2000,
+            amount: 0,
             date: now,
             comment: 'Разовое занятие',
             visitId: visit.id,

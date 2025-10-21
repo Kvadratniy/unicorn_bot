@@ -3,7 +3,7 @@ import { showAvailabilityDates } from './action/showAvailabilityDates.action';
 import { showAvailabilityForDay } from './action/showAvailabilityForDay.action';
 import { showTeacherBalanceAction } from './action/balance.action';
 
-export function registerTeacherHandlers(bot: Telegraf<any>) {
+export function registerTeacherHandlers(bot: Telegraf<UnicornWizardContext>) {
     bot.action('availability_menu', async (ctx) => showAvailabilityDates(ctx, 0));
 
     // следующие 7 дней
@@ -32,6 +32,10 @@ export function registerTeacherHandlers(bot: Telegraf<any>) {
     bot.action(/^availability_add_(\d{4}-\d{2}-\d{2})$/, (ctx) =>
         ctx.scene.enter('add-availability'),
     );
+
+    bot.action('teacher_withdrawal', async (ctx) => {
+        await ctx.scene.enter('withdraw-teacher-wizard');
+    });
 
     bot.action('teacher_balance', showTeacherBalanceAction);
 }

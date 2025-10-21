@@ -70,7 +70,7 @@ async function stepSelectTemplate(ctx: AbonementCtx) {
         Markup.inlineKeyboard([
             ...templates.map((t) => [
                 Markup.button.callback(
-                    `${t.name} — ${t.lessons} занятий / ${t.duration} дн. / ${t.price}₽`,
+                    `${t.name} — ${t.lessons} занятий`,
                     `abonement_template_${t.id}`,
                 ),
             ]),
@@ -141,7 +141,7 @@ async function stepCreateAbonement(ctx: AbonementCtx) {
     const template = await abonementService.getTemplateById(templateId!);
     const teacher = await abonementService.getTeacherById(teacherId);
 
-    if (!template || !teacher) {
+    if (!template || !teacher || !studentId) {
         await replyMessage(ctx, '⚠️ Ошибка при создании абонемента.');
         return ctx.scene.leave();
     }
@@ -152,12 +152,15 @@ async function stepCreateAbonement(ctx: AbonementCtx) {
 
     const abonement = await abonementService.createAbonement({
         templateId: templateId!,
-        studentId: studentId!,
-        teacherId: teacherId!,
+        studentId: studentId,
+        teacherId: teacherId,
         subjectId: subjectId!,
         startDate,
         endDate,
     });
+
+    // 🔗 Привязываем ученика к преподавателю (если не связан)
+    await abonementService.connectTeacherAndStudent(teacherId, studentId);
 
     await clearLastKeyboard(ctx);
     await replyMessage(

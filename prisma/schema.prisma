@@ -181,7 +181,6 @@ model AbonementTemplate {
   name       String
   lessons    Int
   duration   Int
-  price      Float
   subject    Subject     @relation(fields: [subjectId], references: [id])
   subjectId  Int
   abonements Abonement[]

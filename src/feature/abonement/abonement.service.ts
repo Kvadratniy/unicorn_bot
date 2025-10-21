@@ -125,4 +125,16 @@ export const abonementService = {
             orderBy: { createdAt: 'desc' },
         });
     },
+
+    async connectTeacherAndStudent(teacherId: number, studentId: number) {
+        return prisma.teacher.update({
+            where: { id: teacherId },
+            data: {
+                students: {
+                    connect: { id: studentId },
+                },
+            },
+        });
+    }
+
 };
