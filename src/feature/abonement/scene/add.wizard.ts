@@ -70,7 +70,7 @@ async function stepSelectTemplate(ctx: AbonementCtx) {
         Markup.inlineKeyboard([
             ...templates.map((t) => [
                 Markup.button.callback(
-                    `${t.name} — ${t.lessons} занятий`,
+                    `${t.name}`,
                     `abonement_template_${t.id}`,
                 ),
             ]),
