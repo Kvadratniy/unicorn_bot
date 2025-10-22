@@ -11,7 +11,7 @@ export const abonementService = {
                 include: {
                     subject: { select: { name: true } },
                 },
-                orderBy: { price: 'asc' },
+                orderBy: { lessons: 'asc' },
             });
         } catch (error) {
             console.error('abonementTemplateService.getAllTemplates error:', error);
@@ -28,7 +28,7 @@ export const abonementService = {
     async getTemplatesBySubject(subjectId: number) {
         return prisma.abonementTemplate.findMany({
             where: { subjectId },
-            orderBy: { price: 'asc' },
+            orderBy: { lessons: 'asc' },
         });
     },
 

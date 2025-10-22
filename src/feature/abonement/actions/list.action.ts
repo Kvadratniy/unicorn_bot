@@ -18,7 +18,11 @@ export async function showAbonementTemplatesAction(ctx: any) {
     let text = '🎫 *Список типов абонементов:*\n\n';
 
     for (const t of templates) {
-        text += `• *${t.name}*\n📘 Предмет: ${t.subject.name}\n📚 ${t.lessons} занятий\n⏱ ${t.duration} дней\n💰 ${t.price}₽\n\n`;
+        text += `• *${t.name}*\n`;
+        text += `📘 Предмет: ${t.subject?.name ?? '—'}\n`;
+        text += `📚 ${t.lessons} занятий\n`;
+        text += `⏱ ${t.duration} дней\n`;
+        text += '\n';
     }
 
     await ctx.editMessageText(text, {
